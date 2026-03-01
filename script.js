@@ -1,110 +1,86 @@
 const countdownForm = document.getElementById("countdownForm");
 const inputContainer = document.getElementById("input-container");
-const dateEl = document.getElementById("date-picker");
-
 const countdownEl = document.getElementById("countdown");
-const countdownElTitle = document.getElementById("countdown-title");
-const countdownBtn = document.getElementById("countdown-button");
-const timeElements = document.querySelectorAll("span");
-
 const completeEl = document.getElementById("complete");
-const completeElInfo = document.getElementById("complete-info");
-const completeBtn = document.getElementById("complete-button");
 
-let countdownTitle = "";
-let countdownDate = "";
-let countdownValue = Date;
+const timeElements = {
+  days: document.getElementById("days"),
+  hours: document.getElementById("hours"),
+  mins: document.getElementById("minutes"),
+  secs: document.getElementById("seconds"),
+};
+
 let countdownActive;
 let savedCountdown;
 
-const second = 1000;
-const minute = second * 60;
-const hour = minute * 60;
-const day = hour * 24;
+const fp = flatpickr("#date-picker", {
+  enableTime: true,
+  dateFormat: "Y-m-d H:i",
+  minDate: "today",
+  theme: "material_blue",
+});
 
-// Set Date Input Min & Value with Today's Date
-const today = new Date().toISOString().split("T")[0];
-dateEl.setAttribute("min", today);
-
-// Populate Countdown / Complete UI
 function updateDOM() {
   countdownActive = setInterval(() => {
     const now = new Date().getTime();
-    const distance = countdownValue - now;
-    const days = Math.floor(distance / day);
-    const hours = Math.floor((distance % day) / hour);
-    const minutes = Math.floor((distance % hour) / minute);
-    const seconds = Math.floor((distance % minute) / second);
-    // Hide Input
-    inputContainer.hidden = true;
-    // If the countdown has ended, show final state
+    const distance = savedCountdown.value - now;
+
     if (distance < 0) {
-      countdownEl.hidden = true;
       clearInterval(countdownActive);
-      completeElInfo.textContent = `${countdownTitle} finished on ${countdownDate}`;
+      countdownEl.hidden = true;
       completeEl.hidden = false;
+      // فیچر: لرزش صفحه هنگام اتمام
+      document.body.style.animation = "shake 0.5s";
     } else {
-      // else, show the countdown in progress
-      countdownElTitle.textContent = `${countdownTitle}`;
-      timeElements[0].textContent = `${days}`;
-      timeElements[1].textContent = `${hours}`;
-      timeElements[2].textContent = `${minutes}`;
-      timeElements[3].textContent = `${seconds}`;
-      completeEl.hidden = true;
+      inputContainer.hidden = true;
       countdownEl.hidden = false;
+
+      document.getElementById("countdown-title").textContent =
+        savedCountdown.title;
+      timeElements.days.textContent = Math.floor(
+        distance / (1000 * 60 * 60 * 24),
+      );
+      timeElements.hours.textContent = Math.floor(
+        (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
+      );
+      timeElements.mins.textContent = Math.floor(
+        (distance % (1000 * 60 * 60)) / (1000 * 60),
+      );
+      timeElements.secs.textContent = Math.floor(
+        (distance % (1000 * 60)) / 1000,
+      );
     }
-  }, second);
+  }, 1000);
 }
 
-function updateCountdown(e) {
+function startCountdown(e) {
   e.preventDefault();
-  // Set title and date, save to localStorage
-  countdownTitle = e.srcElement[0].value;
-  countdownDate = e.srcElement[1].value;
+  const title = e.target[0].value;
+  const dateValue = e.target[1].value;
+
+  if (!dateValue) return;
+
   savedCountdown = {
-    title: countdownTitle,
-    date: countdownDate,
+    title: title,
+    value: new Date(dateValue).getTime(),
   };
-  localStorage.setItem("countdown", JSON.stringify(savedCountdown));
-  // Check if no date entered
-  if (countdownDate === "") {
-    alert("Please select a date for the countdown.");
-  } else {
-    // Get number version of current Date, updateDOM
-    countdownValue = new Date(countdownDate).getTime();
-    updateDOM();
-  }
+
+  localStorage.setItem("glass_countdown", JSON.stringify(savedCountdown));
+  updateDOM();
 }
 
 function reset() {
-  // Hide countdowns, show input form
-  countdownEl.hidden = true;
-  completeEl.hidden = true;
-  inputContainer.hidden = false;
-  // Stop the countdown
   clearInterval(countdownActive);
-  // Reset values, remove localStorage item
-  countdownTitle = "";
-  countdownDate = "";
-  localStorage.removeItem("countdown");
+  localStorage.removeItem("glass_countdown");
+  location.reload();
 }
 
-function restorePreviousCountdown() {
-  // Get countdown from localStorage if available
-  if (localStorage.getItem("countdown")) {
-    inputContainer.hidden = true;
-    savedCountdown = JSON.parse(localStorage.getItem("countdown"));
-    countdownTitle = savedCountdown.title;
-    countdownDate = savedCountdown.date;
-    countdownValue = new Date(countdownDate).getTime();
-    updateDOM();
-  }
+countdownForm.addEventListener("submit", startCountdown);
+document.getElementById("countdown-button").addEventListener("click", reset);
+document.getElementById("complete-button").addEventListener("click", reset);
+
+const saved = localStorage.getItem("glass_countdown");
+if (saved) {
+  savedCountdown = JSON.parse(saved);
+  updateDOM();
 }
-
-// Event Listener
-countdownForm.addEventListener("submit", updateCountdown);
-countdownBtn.addEventListener("click", reset);
-completeBtn.addEventListener("click", reset);
-
-// On Load, check localStorage
-restorePreviousCountdown();
