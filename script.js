@@ -1,6 +1,11 @@
+/**
+ * Pro Glass Countdown - Logic
+ */
+
 const countdownForm = document.getElementById("countdownForm");
 const inputContainer = document.getElementById("input-container");
 const countdownEl = document.getElementById("countdown");
+const countdownTitleEl = document.getElementById("countdown-title");
 const completeEl = document.getElementById("complete");
 
 const timeElements = {
@@ -13,12 +18,15 @@ const timeElements = {
 let countdownActive;
 let savedCountdown;
 
+// Initialize Flatpickr
 const fp = flatpickr("#date-picker", {
   enableTime: true,
   dateFormat: "Y-m-d H:i",
   minDate: "today",
-  theme: "material_blue",
 });
+
+// Helper: Add leading zero to numbers < 10
+const formatTime = (time) => (time < 10 ? `0${time}` : time);
 
 function updateDOM() {
   countdownActive = setInterval(() => {
@@ -26,39 +34,43 @@ function updateDOM() {
     const distance = savedCountdown.value - now;
 
     if (distance < 0) {
+      // Countdown Finished
       clearInterval(countdownActive);
       countdownEl.hidden = true;
-      completeEl.hidden = false;
-      // فیچر: لرزش صفحه هنگام اتمام
-      document.body.style.animation = "shake 0.5s";
-    } else {
       inputContainer.hidden = true;
+      completeEl.hidden = false;
+    } else {
+      // Show Countdown
+      inputContainer.hidden = true;
+      completeEl.hidden = true;
       countdownEl.hidden = false;
 
-      document.getElementById("countdown-title").textContent =
-        savedCountdown.title;
-      timeElements.days.textContent = Math.floor(
-        distance / (1000 * 60 * 60 * 24),
-      );
-      timeElements.hours.textContent = Math.floor(
+      countdownTitleEl.textContent = savedCountdown.title;
+
+      const d = Math.floor(distance / (1000 * 60 * 60 * 24));
+      const h = Math.floor(
         (distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
       );
-      timeElements.mins.textContent = Math.floor(
-        (distance % (1000 * 60 * 60)) / (1000 * 60),
-      );
-      timeElements.secs.textContent = Math.floor(
-        (distance % (1000 * 60)) / 1000,
-      );
+      const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+      timeElements.days.textContent = formatTime(d);
+      timeElements.hours.textContent = formatTime(h);
+      timeElements.mins.textContent = formatTime(m);
+      timeElements.secs.textContent = formatTime(s);
     }
   }, 1000);
 }
 
 function startCountdown(e) {
   e.preventDefault();
-  const title = e.target[0].value;
-  const dateValue = e.target[1].value;
+  const title = document.getElementById("title").value;
+  const dateValue = document.getElementById("date-picker").value;
 
-  if (!dateValue) return;
+  if (!dateValue || !title) {
+    alert("Please enter a title and select a valid date.");
+    return;
+  }
 
   savedCountdown = {
     title: title,
@@ -72,15 +84,28 @@ function startCountdown(e) {
 function reset() {
   clearInterval(countdownActive);
   localStorage.removeItem("glass_countdown");
-  location.reload();
+
+  // Reset UI visibility
+  countdownEl.hidden = true;
+  completeEl.hidden = true;
+  inputContainer.hidden = false;
+
+  // Clear inputs
+  countdownForm.reset();
 }
 
+// Event Listeners
 countdownForm.addEventListener("submit", startCountdown);
 document.getElementById("countdown-button").addEventListener("click", reset);
 document.getElementById("complete-button").addEventListener("click", reset);
 
-const saved = localStorage.getItem("glass_countdown");
-if (saved) {
-  savedCountdown = JSON.parse(saved);
-  updateDOM();
+// Check Local Storage on Load
+function restorePreviousCountdown() {
+  const saved = localStorage.getItem("glass_countdown");
+  if (saved) {
+    savedCountdown = JSON.parse(saved);
+    updateDOM();
+  }
 }
+
+restorePreviousCountdown();
